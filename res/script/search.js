@@ -6,7 +6,7 @@ const path = {
 	"Elettrotecnica": "pages/elettrotecnica.html",
 	"Quiz": "pages/quiz_elettrotecnica.html",
 	"SystemsAndNetwork": "pages/systems_and_network.html",
-	"test": "pages/test.html"
+	"test": "pages/test.html",
 	"Agent": "pages/agent.html",
 	"Query": "pages/valid_query.html"
 };
@@ -21,8 +21,10 @@ input.style.color = 'green';
 input.style.fontFamily = 'monospace';
 input.style.border = '3px solid green';
 input.style.padding = '6px';
+input.style.height = '50px';
+input.style.width = '150px';
 input.type = 'search';
-input.textContent = '...';
+input.placeholder = '...';
 
 document.body.appendChild(input);
 
@@ -33,6 +35,8 @@ btn.style.backgroundColor = "black";
 btn.style.color = "green";
 btn.style.fontFamily = "monospace";
 btn.style.border = "3px solid green";
+input.style.height = '50px';
+input.style.width = '25px';
 btn.style.padding = "6px";
 
 input.insertAdjacentElement("afterend", btn);

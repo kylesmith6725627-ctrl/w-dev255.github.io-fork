@@ -15,6 +15,15 @@ const error = {
 	"404": "pages/404.html"
 }
 
+let box = document.createElement('div');
+box.border = '3px solid green';
+box.padding = '6px';
+box.className = 'retro_box';
+document.body.appendChild(box);
+
+let search_box = document.querySelector('retro_box');
+
+
 let input = document.createElement('input');
 input.style.backgroundColor = '#000000';
 input.style.color = 'green';
@@ -22,11 +31,11 @@ input.style.fontFamily = 'monospace';
 input.style.border = '3px solid green';
 input.style.padding = '6px';
 input.style.height = '50px';
-input.style.width = '150px';
+input.style.width = '250px';
 input.type = 'search';
 input.placeholder = '...';
 
-document.body.appendChild(input);
+search_box.appendChild(input);
 
 let btn = document.createElement("button");
 btn.type = "submit";
@@ -36,7 +45,7 @@ btn.style.color = "green";
 btn.style.fontFamily = "monospace";
 btn.style.border = "3px solid green";
 input.style.height = '50px';
-input.style.width = '25px';
+input.style.width = '50px';
 btn.style.padding = "6px";
 
 input.insertAdjacentElement("afterend", btn);

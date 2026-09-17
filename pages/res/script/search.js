@@ -6,6 +6,7 @@ const path = {
 	"Elettrotecnica": "pages/elettrotecnica.html",
 	"Quiz": "pages/quiz_elettrotecnica.html",
 	"SystemsAndNetwork": "pages/systems_and_network.html",
+	"test": "pages/test.html"
 	"Agent": "pages/agent.html",
 	"Query": "pages/valid_query.html"
 };

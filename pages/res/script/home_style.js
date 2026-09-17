@@ -10,8 +10,8 @@ document.body.appendChild(icon);
 document.addEventListener('DOMContentLoaded', () => {
         let immage = document.getElementById('302181985915867');
         immage.style.position = 'absolute';
-        immage.style.top = '0';
-        immage.style.left = '0';
+        immage.style.top = '1';
+        immage.style.left = '5';
 });
 
 let search_icon = document.querySelector('.icon');

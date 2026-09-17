@@ -15,7 +15,16 @@ const error = {
 	"404": "pages/404.html"
 }
 
-let input = document.getElementById("search");
+let input = document.createElement('input');
+input.style.backgroundColor = '#000000';
+input.style.color = 'green';
+input.style.fontFamily = 'monospace';
+input.style.border = '3px solid green';
+input.style.padding = '6px';
+input.type = 'search';
+input.textContent = '...';
+
+document.body.appendChild(input);
 
 let btn = document.createElement("button");
 btn.type = "submit";

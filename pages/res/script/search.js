@@ -30,8 +30,8 @@ input.style.color = 'green';
 input.style.fontFamily = 'monospace';
 input.style.border = '3px solid green';
 input.style.padding = '6px';
-input.style.height = '50px';
-input.style.width = '250px';
+input.style.height = '1rem';
+input.style.width = '2rem';
 input.type = 'search';
 input.placeholder = '...';
 
@@ -44,8 +44,8 @@ btn.style.backgroundColor = "black";
 btn.style.color = "green";
 btn.style.fontFamily = "monospace";
 btn.style.border = "3px solid green";
-input.style.height = '50px';
-input.style.width = '50px';
+input.style.height = '1rem';
+input.style.width = '1rem';
 btn.style.padding = "6px";
 
 input.insertAdjacentElement("afterend", btn);

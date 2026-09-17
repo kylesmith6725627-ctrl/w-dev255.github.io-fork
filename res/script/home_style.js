@@ -8,6 +8,6 @@ icon.className = 'icon';
 document.body.appendChild(icon);
 
 let search_icon = document.querySelector('.icon');
-search_icon.style.height = '50px';
-search_icon.style.width = '25px';
+search_icon.style.height = '100px';
+search_icon.style.width = '150px';
 

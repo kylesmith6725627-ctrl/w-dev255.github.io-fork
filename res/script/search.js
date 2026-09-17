@@ -31,7 +31,7 @@ input.style.fontFamily = 'monospace';
 input.style.border = '3px solid green';
 input.style.padding = '6px';
 input.style.height = '1rem';
-input.style.width = '2rem';
+input.style.width = '5rem';
 input.type = 'search';
 input.placeholder = '...';
 

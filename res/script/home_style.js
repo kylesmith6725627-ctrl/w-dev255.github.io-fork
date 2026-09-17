@@ -5,6 +5,7 @@ document.body.style.padding = '6px';
 let icon = document.createElement('img');
 icon.src = "res/img/w-dev255_black_icon.jpg";
 icon.className = 'icon';
+document.body.appendChild(icon);
 
 let search_icon = document.querySelector('.icon');
 search_icon.style.height = '50px';

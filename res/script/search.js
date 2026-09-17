@@ -21,7 +21,7 @@ box.padding = '6px';
 box.className = 'retro_box';
 document.body.appendChild(box);
 
-let search_box = document.querySelector('retro_box');
+let search_box = document.querySelector('.retro_box');
 
 
 let input = document.createElement('input');

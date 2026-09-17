@@ -10,11 +10,11 @@ document.body.appendChild(icon);
 document.addEventListener('DOMContentLoaded', () => {
         let immage = document.getElementById('302181985915867');
         immage.style.position = 'absolute';
-        immage.style.top = '1';
-        immage.style.left = '5';
+        immage.style.top = '1rem';
+        immage.style.left = '1rem';
 });
 
 let search_icon = document.querySelector('.icon');
-search_icon.style.height = '50px';
-search_icon.style.width = '75px';
+search_icon.style.height = '5rem';
+search_icon.style.width = '5rem';
 

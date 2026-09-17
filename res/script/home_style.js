@@ -15,6 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let search_icon = document.querySelector('.icon');
-search_icon.style.height = '100px';
-search_icon.style.width = '150px';
+search_icon.style.height = '50px';
+search_icon.style.width = '75px';
 

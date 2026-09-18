@@ -4,6 +4,7 @@ import { createReasoner } from './agent-reasoning.js';
 import { createAgentUI, createPrinter } from './agent-ui.js';
 import { createTextToSpeech } from './agent-tts.js';
 import { createCommands } from './agent-commands.js';
+import { saveAgentContext } from './agent-context-storage.js';
 
 const state = createAgentState();
 const ui = createAgentUI();
@@ -43,6 +44,7 @@ async function execute(input) {
   state.history.push(value);
   print(`${state.prompt}${value}`);
   await dispatch(parseCommand(value), value);
+  saveAgentContext(state);
   ui.commandArea.value = '';
   ui.commandArea.focus();
 }
@@ -59,4 +61,10 @@ ui.commandArea.addEventListener('keydown', (event) => {
   }
 });
 
-print('Agente JavaScript pronto. Usa “help” per iniziare. Ragionamento contestuale locale attivo.');
+window.addEventListener('pagehide', () => saveAgentContext(state));
+
+if (state.restored) {
+  print('Contesto precedente ripristinato dal cookie locale. Usa “history” per visualizzare la cronologia.');
+} else {
+  print('Agente JavaScript pronto. Usa “help” per iniziare. Ragionamento contestuale locale attivo.');
+}

@@ -11,7 +11,9 @@ export function createAgentState() {
     context: saved?.context || {
       turns: [],
       lastIntent: null,
-      lastTopic: ''
+      lastTopic: '',
+      language: 'it',
+      lastLanguage: 'it'
     }
   };
 }

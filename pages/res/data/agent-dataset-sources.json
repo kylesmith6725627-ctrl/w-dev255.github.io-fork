@@ -1,0 +1,30 @@
+{
+  "description": "Public dataset references used to guide the local, curated augmentation. The runtime intentionally ships only small reviewed examples for privacy, performance and offline use.",
+  "sources": [
+    {
+      "name": "ITALIC",
+      "url": "https://github.com/MorenoLaQuatra/ITALIC",
+      "paper": "https://arxiv.org/abs/2306.08502",
+      "use": "Italian intent taxonomy and example style",
+      "license": "See the upstream repository and paper for the applicable data terms"
+    },
+    {
+      "name": "PolyAI conversational-datasets",
+      "url": "https://github.com/PolyAI-LDN/conversational-datasets",
+      "use": "Conversational intent and multilingual dataset patterns",
+      "license": "Apache-2.0 (verify individual source datasets before redistribution)"
+    },
+    {
+      "name": "CodeSearchNet",
+      "url": "https://github.com/github/CodeSearchNet",
+      "use": "Natural-language-to-code examples and JavaScript vocabulary",
+      "license": "CC BY-SA 4.0 for the dataset; verify individual repositories"
+    },
+    {
+      "name": "OpenAssistant",
+      "url": "https://huggingface.co/datasets/OpenAssistant/oasst2",
+      "use": "Bilingual conversational phrasing and coding requests",
+      "license": "Apache-2.0 (see dataset card)"
+    }
+  ]
+}

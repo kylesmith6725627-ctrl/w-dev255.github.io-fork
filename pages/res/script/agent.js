@@ -6,6 +6,7 @@ import { createTextToSpeech } from './agent-tts.js';
 import { createCommands } from './agent-commands.js';
 import { saveAgentContext } from './agent-context-storage.js';
 import { createChatEngine } from './agent-chat.js';
+import { createDecisionTree, formatTaskPlan } from './agent-decision-tree.js';
 
 const state = createAgentState();
 const ui = createAgentUI();
@@ -14,9 +15,16 @@ const reasoner = createReasoner(state);
 const chat = createChatEngine(state);
 const textToSpeech = createTextToSpeech({ state, button: ui.button, print });
 const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech });
+const decisionTree = createDecisionTree(state);
 
 function tokenize(input) {
   return shellwords.split(input);
+}
+
+function maybePrintTaskPlan(value, decision) {
+  const plan = decisionTree.predict(value, { intent: decision?.intent || decision?.command || 'js' });
+  const formatted = formatTaskPlan(plan, decisionTree.examples);
+  print(formatted);
 }
 
 async function dispatch(input) {
@@ -31,6 +39,13 @@ async function dispatch(input) {
     if (decision.command) {
       name = decision.command;
       args = decision.args || [];
+    }
+  }
+
+  if (decision.command || name === 'js' || name === 'generate-js' || name === 'goto' || name === 'scrape' || name === 'weather' || name === 'meteo' || name === 'country' || name === 'paese' || name === 'wiki' || name === 'wikimedia') {
+    const plan = decisionTree.predict(value, { intent: decision.intent || name });
+    if (plan.steps?.length) {
+      print(formatTaskPlan(plan, decisionTree.examples));
     }
   }
 

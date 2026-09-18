@@ -17,11 +17,8 @@ async function dispatch(tokens, originalInput) {
   let name = (tokens.shift() || '').toLowerCase();
   let args = tokens;
   let decision = { intent: name, confidence: 1, topic: args.join(' ') };
-
-  // I comandi espliciti hanno priorità. Le frasi naturali passano dal livello
-  // di ragionamento, che usa anche le richieste precedenti della sessione.
   if (!commands[name]) {
-    decision = reasoner.interpret(originalInput);
+    decision = await reasoner.interpret(originalInput);
     if (!decision.command) {
       print('Non ho capito la richiesta. Prova “help” oppure specifica meglio obiettivo e argomento.');
       return;
@@ -29,7 +26,6 @@ async function dispatch(tokens, originalInput) {
     name = decision.command;
     args = decision.args || [];
   }
-
   try {
     const result = await commands[name](args);
     if (result) print(reasoner.contextualize(result, decision));
@@ -49,22 +45,13 @@ async function execute(input) {
   ui.commandArea.focus();
 }
 
-ui.form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  execute(ui.commandArea.value);
-});
-
+ui.form.addEventListener('submit', (event) => { event.preventDefault(); execute(ui.commandArea.value); });
 ui.commandArea.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    ui.form.requestSubmit();
-  }
+  if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); ui.form.requestSubmit(); }
 });
-
 window.addEventListener('pagehide', () => saveAgentContext(state));
 
-if (state.restored) {
-  print('Contesto precedente ripristinato dal cookie locale. Usa “history” per visualizzare la cronologia.');
-} else {
-  print('Agente JavaScript pronto. Usa “help” per iniziare. Ragionamento contestuale locale attivo.');
-}
+reasoner.ready.then(() => {
+  const size = state.localModel?.size || 0;
+  print(`Agente JavaScript pronto. Modello NLP locale addestrato su ${size} esempi; usa “help” per iniziare.`);
+}).catch(() => print('Agente JavaScript pronto con fallback locale.'));

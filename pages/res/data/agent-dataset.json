@@ -1,0 +1,22 @@
+[
+  {"text":"aiutami a creare un bottone che mostra un messaggio","intent":"js","topic":"bottone mostra messaggio","features":["dom","event","button"]},
+  {"text":"scrivi javascript per gestire il click su #save","intent":"js","topic":"gestire click su #save","features":["dom","event","click"]},
+  {"text":"crea una richiesta fetch GET a /api/users","intent":"js","topic":"fetch GET /api/users","features":["fetch","http","async"]},
+  {"text":"invia i dati del form con una POST JSON","intent":"js","topic":"form POST JSON","features":["fetch","form","post"]},
+  {"text":"salva le preferenze in localStorage","intent":"js","topic":"salvare preferenze localStorage","features":["storage","state"]},
+  {"text":"valida un modulo email prima dell invio","intent":"js","topic":"validazione form email submit","features":["form","validation"]},
+  {"text":"usa debounce mentre l utente digita","intent":"js","topic":"debounce input","features":["event","debounce"]},
+  {"text":"filtra un array di numeri positivi","intent":"js","topic":"filter array numeri positivi","features":["array","filter"]},
+  {"text":"calcola la somma con reduce","intent":"js","topic":"reduce somma array","features":["array","reduce"]},
+  {"text":"crea un modal accessibile","intent":"js","topic":"modal accessibile","features":["dom","modal","a11y"]},
+  {"text":"come funziona questo agente","intent":"help","topic":"funzionamento","features":["help"]},
+  {"text":"mostrami i comandi disponibili","intent":"help","topic":"comandi","features":["help"]},
+  {"text":"che ore sono","intent":"time","topic":"ora","features":["time"]},
+  {"text":"qual è la data di oggi","intent":"time","topic":"data","features":["time"]},
+  {"text":"fammi vedere la cronologia","intent":"history","topic":"cronologia","features":["history"]},
+  {"text":"apri la pagina degli strumenti","intent":"goto","topic":"tools","features":["navigation","tools"]},
+  {"text":"vai all agente","intent":"goto","topic":"agent","features":["navigation","agent"]},
+  {"text":"ripeti buongiorno","intent":"echo","topic":"buongiorno","features":["echo"]},
+  {"text":"continua con la stessa richiesta javascript","intent":"continue","topic":"javascript","features":["context"]},
+  {"text":"approfondisci la soluzione precedente","intent":"continue","topic":"soluzione","features":["context"]}
+]

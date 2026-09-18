@@ -3,16 +3,55 @@ const MAX_DEPTH = 5;
 const MIN_LEAF_SIZE = 2;
 
 const STEP_LIBRARY = {
-  js: ['identifica l obiettivo e i dati di ingresso', 'scomponi la richiesta in capacità riutilizzabili', 'genera il codice JavaScript', 'verifica errori e casi limite'],
-  fetch: ['definisci endpoint e metodo HTTP', 'costruisci richiesta e payload', 'gestisci risposta, errori e stato di caricamento'],
-  form: ['individua i campi e i vincoli', 'valida i dati prima dell invio', 'gestisci submit e feedback all utente'],
-  storage: ['definisci una chiave stabile', 'serializza e salva lo stato', 'gestisci dati mancanti o corrotti'],
-  dom: ['individua selettori ed eventi', 'collega gli event listener', 'aggiorna il DOM in modo sicuro'],
-  array: ['definisci la trasformazione desiderata', 'applica map, filter, reduce o sort', 'controlla il risultato con dati rappresentativi'],
-  async: ['separa operazioni asincrone e UI', 'gestisci attesa, successo ed errore', 'evita richieste duplicate o stati incoerenti'],
-  navigation: ['riconosci la destinazione', 'verifica che la pagina sia disponibile', 'esegui la navigazione'],
-  help: ['interpreta la richiesta', 'seleziona le funzionalità disponibili'],
-  time: ['determina il fuso e il formato', 'restituisci data e ora locali']
+  js: [
+    'identifica l obiettivo e i dati di ingresso',
+    'scomponi la richiesta in capacità riutilizzabili',
+    'genera il codice JavaScript',
+    'verifica errori e casi limite'
+  ],
+  fetch: [
+    'definisci endpoint e metodo HTTP',
+    'costruisci richiesta e payload',
+    'gestisci risposta, errori e stato di caricamento'
+  ],
+  form: [
+    'individua i campi e i vincoli',
+    'valida i dati prima dell invio',
+    'gestisci submit e feedback all utente'
+  ],
+  storage: [
+    'definisci una chiave stabile',
+    'serializza e salva lo stato',
+    'gestisci dati mancanti o corrotti'
+  ],
+  dom: [
+    'individua selettori ed eventi',
+    'collega gli event listener',
+    'aggiorna il DOM in modo sicuro'
+  ],
+  array: [
+    'definisci la trasformazione desiderata',
+    'applica map, filter, reduce o sort',
+    'controlla il risultato con dati rappresentativi'
+  ],
+  async: [
+    'separa operazioni asincrone e UI',
+    'gestisci attesa, successo ed errore',
+    'evita richieste duplicate o stati incoerenti'
+  ],
+  navigation: [
+    'riconosci la destinazione',
+    'verifica che la pagina sia disponibile',
+    'esegui la navigazione'
+  ],
+  help: [
+    'interpreta la richiesta',
+    'seleziona le funzionalità disponibili'
+  ],
+  time: [
+    'determina il fuso e il formato',
+    'restituisci data e ora locali'
+  ]
 };
 
 function normalize(value) {
@@ -21,12 +60,24 @@ function normalize(value) {
     .replace(/\s+/g, ' ').trim();
 }
 
-function tokens(value) { return [...new Set(normalize(value).split(' ').filter((token) => token.length > 2))]; }
+function tokens(value) {
+  return [...new Set(normalize(value).split(' ').filter((token) => token.length > 2))];
+}
+
+function flattenFeatures(features) {
+  if (!features) return [];
+  if (Array.isArray(features)) return features;
+  if (features instanceof Set) return [...features];
+  return String(features).split(/[,\s]+/).filter(Boolean);
+}
 
 function featureSet(example) {
-  const text = normalize(`${example.input || ''} ${example.topic || ''} ${(example.features || []).join(' ')}`);
+  const text = normalize(`${example.input || ''} ${example.topic || ''} ${flattenFeatures(example.features).join(' ')}`);
   const words = tokens(text);
-  const featureWords = ['fetch', 'api', 'form', 'modulo', 'storage', 'localstorage', 'array', 'button', 'bottone', 'click', 'event', 'async', 'await', 'error', 'errore', 'modal', 'email', 'validazione', 'navigation', 'pagina', 'test'];
+  const featureWords = [
+    'fetch', 'api', 'form', 'modulo', 'storage', 'localstorage', 'array', 'button', 'bottone', 'click',
+    'event', 'async', 'await', 'error', 'errore', 'modal', 'email', 'validazione', 'navigation', 'pagina', 'test'
+  ];
   return new Set([...words.filter((word) => word.length >= 5), ...featureWords.filter((word) => text.includes(word))]);
 }
 
@@ -50,18 +101,30 @@ function buildTree(examples, depth = 0) {
   if (!examples.length || labels.size === 1 || depth >= MAX_DEPTH || examples.length < MIN_LEAF_SIZE) {
     return { type: 'leaf', label: majority(examples) };
   }
-  const candidates = [...new Set(examples.flatMap((item) => item.features))];
+
+  const candidates = [...new Set(examples.flatMap((item) => [...item.features]))];
   const parentEntropy = entropy(examples);
   let best = null;
+
   for (const feature of candidates) {
     const yes = examples.filter((item) => item.features.has(feature));
     const no = examples.filter((item) => !item.features.has(feature));
     if (!yes.length || !no.length) continue;
-    const gain = parentEntropy - (yes.length / examples.length) * entropy(yes) - (no.length / examples.length) * entropy(no);
+
+    const gain = parentEntropy
+      - (yes.length / examples.length) * entropy(yes)
+      - (no.length / examples.length) * entropy(no);
+
     if (!best || gain > best.gain) best = { feature, gain, yes, no };
   }
+
   if (!best || best.gain <= 0.01) return { type: 'leaf', label: majority(examples) };
-  return { type: 'node', feature: best.feature, yes: buildTree(best.yes, depth + 1), no: buildTree(best.no, depth + 1) };
+  return {
+    type: 'node',
+    feature: best.feature,
+    yes: buildTree(best.yes, depth + 1),
+    no: buildTree(best.no, depth + 1)
+  };
 }
 
 function predict(tree, features) {
@@ -71,34 +134,51 @@ function predict(tree, features) {
 }
 
 function collectExamples(state) {
-  return (state.context?.turns || []).filter((turn) => turn.input && turn.intent && turn.intent !== 'unknown')
-    .slice(-MAX_EXAMPLES).map((turn) => ({ ...turn, label: turn.intent, features: featureSet(turn) }));
+  return (state.context?.turns || [])
+    .filter((turn) => turn.input && turn.intent && turn.intent !== 'unknown')
+    .slice(-MAX_EXAMPLES)
+    .map((turn) => ({
+      ...turn,
+      label: turn.intent,
+      features: featureSet(turn)
+    }));
 }
 
 function stepsFor(label, input) {
   const text = normalize(input);
-  const steps = [...(STEP_LIBRARY[label] || STEP_LIBRARY.js)];
+  const base = [...(STEP_LIBRARY[label] || STEP_LIBRARY.js)];
   const extra = [];
   if (/test|prova|verifica/.test(text)) extra.push('esegui test manuali e verifica il comportamento atteso');
   if (/accessib|accessibil/.test(text)) extra.push('controlla tastiera, focus e attributi ARIA');
   if (/sicuro|sicura|sicurezza|sanitiz/.test(text)) extra.push('valida e limita gli input prima di usarli');
-  return [...steps, ...extra].filter((step, index, list) => list.indexOf(step) === index);
+  return [...base, ...extra].filter((step, index, list) => list.indexOf(step) === index);
 }
 
 export function createDecisionTree(state) {
   const examples = collectExamples(state);
   const tree = buildTree(examples);
+
   return {
     tree,
     examples: examples.length,
     predict(input, hint = {}) {
       const features = featureSet({ input, ...hint });
       const label = predict(tree, features);
-      return { intent: label === 'unknown' ? (hint.intent || 'js') : label, steps: stepsFor(label === 'unknown' ? (hint.intent || 'js') : label, input) };
+      const resolved = label === 'unknown' ? (hint.intent || 'js') : label;
+      return {
+        intent: resolved,
+        steps: stepsFor(resolved, input)
+      };
     },
     describe(node = tree, prefix = '') {
+      if (!node) return [];
       if (node.type === 'leaf') return [`${prefix}=> ${node.label}`];
-      return [`${prefix}se ${node.feature}:`, ...this.describe(node.yes, `${prefix}  `), `${prefix}altrimenti:`, ...this.describe(node.no, `${prefix}  `)];
+      return [
+        `${prefix}se ${node.feature}:`,
+        ...this.describe(node.yes, `${prefix}  `),
+        `${prefix}altrimenti:`,
+        ...this.describe(node.no, `${prefix}  `)
+      ];
     }
   };
 }

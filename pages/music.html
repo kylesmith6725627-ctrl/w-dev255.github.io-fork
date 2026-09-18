@@ -1,20 +1,2 @@
 <!DOCTYPE html>
-<html>
-	<head>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<meta charset="UTF-8">
-		<title>Music</title>
-		<link rel="stylesheet" href="res/style/retro_terminal.css">
-	</head>
-	<body>
-		<div class="retro">
-			<audio id="menuSound" src="res/audio/Menu_Full.opus"></audio>
-			<table>
-				<caption>Music</caption>
-				<tr>
-					<td><button onclick="document.getElementById('menuSound').play();">Play</button></td>
-				</tr>
-			</table>
-		</div>
-	</body>
-</html>
+<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta charset="UTF-8"><title>Music</title></head><body><div class="retro"><audio id="menuSound" src="res/audio/Menu_Full.opus"></audio><table><caption>Music</caption><tr><td><button id="play-menu" type="button">Play</button></td></tr></table></div><script src="res/script/site_style.js"></script><script>document.getElementById('play-menu').addEventListener('click', () => document.getElementById('menuSound').play());</script></body></html>

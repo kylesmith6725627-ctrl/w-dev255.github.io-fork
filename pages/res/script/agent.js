@@ -1,3 +1,4 @@
+import shellwords from 'https://cdn.jsdelivr.net/npm/shellwords@0.1.1/+esm';
 import { createAgentState } from './agent-state.js';
 import { createReasoner } from './agent-reasoning.js';
 import { createAgentUI, createPrinter } from './agent-ui.js';
@@ -14,12 +15,17 @@ const chat = createChatEngine(state);
 const textToSpeech = createTextToSpeech({ state, button: ui.button, print });
 const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech });
 
+function tokenize(input) {
+  return shellwords.split(input);
+}
+
 async function dispatch(input) {
   const value = input.trim();
-  const tokens = value.match(/[^\s"']+|"[^"]*"|'[^']*'/g) || [];
+  const tokens = tokenize(value);
   let name = (tokens.shift() || '').toLowerCase();
-  let args = tokens.map((part) => part.replace(/^("|')|("|')$/g, '').trim());
+  let args = tokens;
   let decision = { intent: name, confidence: 1, topic: args.join(' ') };
+
   if (!commands[name]) {
     decision = await reasoner.interpret(value);
     if (decision.command) {
@@ -27,11 +33,13 @@ async function dispatch(input) {
       args = decision.args || [];
     }
   }
+
   if (commands[name]) {
     const result = await commands[name](args);
     if (result) print(reasoner.contextualize(result, decision));
     return;
   }
+
   const conversational = chat.reply(value);
   print(conversational.response);
 }
@@ -42,7 +50,11 @@ ui.form.addEventListener('submit', async (event) => {
   if (!value || state.busy) return;
   state.history.push(value);
   print(`${state.prompt}${value}`);
-  try { await dispatch(value); } catch (error) { print(`Errore: ${error.message}`); }
+  try {
+    await dispatch(value);
+  } catch (error) {
+    print(`Errore: ${error.message}`);
+  }
   saveAgentContext(state);
   ui.commandArea.value = '';
   ui.commandArea.focus();

@@ -1,3 +1,5 @@
+import { createScrapingGuard } from './anti-scraping.js';
+
 export function createAgentUI() {
   document.body.style.backgroundColor = '#000000';
   document.body.style.color = 'green';
@@ -52,7 +54,15 @@ export function createAgentUI() {
   terminal.append(outputBox, form);
   document.body.appendChild(terminal);
 
-  return { form, commandArea, button, outputBox };
+  const scrapingGuard = createScrapingGuard({
+    form,
+    commandArea,
+    onBlocked: (message) => {
+      outputBox.textContent += `${outputBox.textContent ? '\\n' : ''}${message}`;
+    },
+  });
+
+  return { form, commandArea, button, outputBox, scrapingGuard };
 }
 
 export function createPrinter(state, outputBox) {

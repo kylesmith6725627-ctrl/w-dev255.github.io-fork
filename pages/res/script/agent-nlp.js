@@ -16,9 +16,7 @@ function normalize(value) {
 }
 
 function words(value) {
-  return normalize(value)
-    .split(' ')
-    .filter((word) => word && !STOP_WORDS.has(word));
+  return normalize(value).split(' ').filter((word) => word && !STOP_WORDS.has(word));
 }
 
 function hasAny(value, candidates) {
@@ -41,10 +39,6 @@ function scoreIntent(value, intent) {
     : 0;
 }
 
-/**
- * Interpreta richieste brevi in italiano senza rete, API o modelli remoti.
- * Restituisce solo comandi già supportati dall'agente: non esegue testo libero.
- */
 export function interpretNaturalLanguage(input) {
   const request = String(input || '').trim();
   if (!request) return null;
@@ -54,22 +48,23 @@ export function interpretNaturalLanguage(input) {
     { command: 'time', terms: ['che ore', 'ora esatta', 'data di oggi', 'che giorno'] },
     { command: 'history', terms: ['cronologia', 'storico', 'comandi precedenti'] },
     { command: 'clear', terms: ['pulisci', 'cancella schermo', 'svuota schermo', 'clear'] },
+    { command: 'scrape', terms: ['fai scraping', 'esegui scraping', 'analizza url', 'analizza pagina', 'estrai da url', 'scrapa'] },
     { command: 'echo', terms: ['ripeti', 'di ', 'scrivi '] },
     { command: 'goto', terms: ['vai ', 'apri ', 'portami ', 'naviga ', 'mostra '] },
     { command: 'js', terms: ['genera javascript', 'genera codice', 'scrivi codice', 'crea codice'] }
   ];
 
-  const best = intents
-    .map((item) => ({ ...item, score: scoreIntent(request, item.terms) }))
+  const best = intents.map((item) => ({ ...item, score: scoreIntent(request, item.terms) }))
     .sort((left, right) => right.score - left.score)[0];
-
   if (!best || best.score === 0) return null;
   if (best.command === 'goto') {
     const page = destination(request);
     return page ? { command: 'goto', args: [page] } : null;
   }
-  if (best.command === 'echo') {
-    return { command: 'echo', args: [request.replace(/^(ripeti|di|scrivi)\s*/i, '').trim()] };
+  if (best.command === 'echo') return { command: 'echo', args: [request.replace(/^(ripeti|di|scrivi)\s*/i, '').trim()] };
+  if (best.command === 'scrape') {
+    const url = request.match(/https?:\/\/[^\s"'<>]+/i)?.[0];
+    return url ? { command: 'scrape', args: [url, request.slice(request.indexOf(url) + url.length).trim()] } : null;
   }
   if (best.command === 'js') {
     const text = request.replace(/^(genera javascript|genera codice|scrivi codice|crea codice)\s*/i, '').trim();
@@ -79,5 +74,5 @@ export function interpretNaturalLanguage(input) {
 }
 
 export function getNaturalLanguageHelp() {
-  return 'NLP locale: prova “che ore sono”, “vai agli strumenti”, “ripeti ciao”, “genera codice per un bottone” o “aiuto”.';
+  return 'NLP locale: prova “analizza https://example.com e riassumi i titoli”, “che ore sono”, “vai agli strumenti” o “genera codice per un bottone”.';
 }

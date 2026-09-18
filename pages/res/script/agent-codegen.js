@@ -1,15 +1,19 @@
-const HELP = 'Richieste supportate: bottone, fetch/API, localStorage, debounce, array, evento, modulo, form, validazione, modal. Usa js <richiesta>.';
+const HELP = 'Generazione dinamica: js <richiesta>. Combina bottone, fetch/API, localStorage, debounce, array, evento, modulo, form, modal e timer.';
 
-const DEFAULT_SELECTOR = '#my-button';
+const DEFAULT_SELECTOR = '#target';
 
 function normalize(text) {
   return String(text || '')
     .toLocaleLowerCase('it-IT')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9#._/-]+/g, ' ')
+    .replace(/[^a-z0-9#._:/?&=-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function jsString(value) {
+  return JSON.stringify(String(value));
 }
 
 function selectorFrom(request, fallback = DEFAULT_SELECTOR) {
@@ -22,101 +26,132 @@ function quotedText(request, fallback) {
   return match ? match[1] : fallback;
 }
 
-function jsString(value) {
-  return JSON.stringify(String(value));
+function urlFrom(request) {
+  const quoted = quotedText(request, '');
+  if (quoted && /^(https?:\/\/|\/|\w+\.)/.test(quoted)) return quoted;
+  const match = String(request).match(/https?:\/\/[^\s"']+|(?:\/|\.\/)[^\s"']+/i);
+  return match ? match[0].replace(/[),.;]+$/, '') : '/data.json';
 }
 
-function scoreTemplate(template, normalized) {
-  const keywordScore = template.keywords.reduce((score, keyword) => {
-    const normalizedKeyword = normalize(keyword);
-    return score + (normalized.includes(normalizedKeyword) ? (normalizedKeyword.includes(' ') ? 3 : 1) : 0);
-  }, 0);
-  const contextScore = template.context?.reduce((score, keyword) => (
-    score + (normalized.includes(normalize(keyword)) ? 1 : 0)
-  ), 0) || 0;
-  return keywordScore + contextScore;
+function hasAny(text, values) {
+  return values.some((value) => text.includes(normalize(value)));
 }
 
-const templates = [
-  {
-    name: 'bottone',
-    keywords: ['bottone', 'button'],
-    context: ['clic', 'click', 'premi'],
-    generate: (request) => {
-      const selector = selectorFrom(request);
-      const message = quotedText(request, 'Bottone premuto!');
-      return `const button = document.querySelector(${jsString(selector)});\n\nif (!button) {\n  throw new Error('Elemento ${selector} non trovato.');\n}\n\nbutton.addEventListener('click', () => {\n  const output = document.querySelector('#output');\n  if (output) output.textContent = ${jsString(message)};\n});`;
-    }
-  },
-  {
-    name: 'fetch',
-    keywords: ['fetch', 'api', 'http', 'richiesta di rete'],
-    context: ['json', 'dati', 'carica', 'caricare'],
-    generate: (request) => {
-      const url = quotedText(request, '/data.json');
-      return `async function loadData(url = ${jsString(url)}) {\n  const response = await fetch(url, {\n    headers: { Accept: 'application/json' }\n  });\n\n  if (!response.ok) {\n    throw new Error(\`HTTP error: \${response.status}\`);\n  }\n\n  return response.json();\n}\n\ntry {\n  const data = await loadData();\n  console.log(data);\n} catch (error) {\n  console.error('Caricamento fallito:', error);\n}`;
-    }
-  },
-  {
-    name: 'localStorage',
-    keywords: ['localstorage', 'storage', 'salva', 'memorizza'],
-    context: ['leggi', 'recupera', 'persistenza'],
-    generate: () => `function saveValue(key, value) {\n  try {\n    localStorage.setItem(key, JSON.stringify(value));\n  } catch (error) {\n    console.error('Salvataggio fallito:', error);\n  }\n}\n\nfunction readValue(key, fallback = null) {\n  try {\n    const value = localStorage.getItem(key);\n    return value === null ? fallback : JSON.parse(value);\n  } catch (error) {\n    console.error('Lettura fallita:', error);\n    return fallback;\n  }\n}`
-  },
-  {
-    name: 'debounce',
-    keywords: ['debounce', 'ritardo'],
-    context: ['input', 'ricerca', 'attesa'],
-    generate: () => `function debounce(callback, delay = 300) {\n  let timeoutId;\n\n  return (...args) => {\n    clearTimeout(timeoutId);\n    timeoutId = setTimeout(() => callback(...args), delay);\n  };\n}`
-  },
-  {
-    name: 'array',
-    keywords: ['array', 'mappa', 'map', 'filtro', 'filter', 'riduci', 'reduce'],
-    context: ['elementi', 'lista', 'numeri'],
-    generate: () => `const numbers = [1, 2, 3, 4];\nconst doubled = numbers\n  .filter((number) => number > 1)\n  .map((number) => number * 2);\n\nconsole.log(doubled);`
-  },
-  {
-    name: 'evento',
-    keywords: ['evento', 'event', 'listener', 'gestore'],
-    context: ['click', 'submit', 'input', 'dom'],
-    generate: (request) => {
-      const eventName = normalize(request).includes('submit') ? 'submit' : 'click';
-      const selector = selectorFrom(request, '#target');
-      return `const element = document.querySelector(${jsString(selector)});\n\nif (element) {\n  element.addEventListener(${jsString(eventName)}, (event) => {\n    console.log('Evento ricevuto:', event.type, event.target);\n  });\n}`;
-    }
-  },
-  {
-    name: 'form',
-    keywords: ['form', 'modulo', 'validazione', 'validate', 'validare'],
-    context: ['input', 'submit', 'errore', 'email'],
-    generate: (request) => {
-      const selector = selectorFrom(request, '#my-form');
-      return `const form = document.querySelector(${jsString(selector)});\n\nif (!form) {\n  throw new Error('Form ${selector} non trovato.');\n}\n\nform.addEventListener('submit', (event) => {\n  event.preventDefault();\n  const data = new FormData(form);\n  const email = String(data.get('email') || '').trim();\n\n  if (!email || !email.includes('@')) {\n    form.setAttribute('aria-invalid', 'true');\n    console.error('Inserisci un indirizzo email valido.');\n    return;\n  }\n\n  form.removeAttribute('aria-invalid');\n  console.log('Form valido:', Object.fromEntries(data));\n});`;
-    }
-  },
-  {
-    name: 'modulo',
-    keywords: ['modulo', 'import', 'export'],
-    context: ['file', 'esportare', 'importare'],
-    generate: () => `// utils.js\nexport function greet(name) {\n  return \`Ciao, \${name}!\`;\n}\n\n// app.js\nimport { greet } from './utils.js';\n\nconsole.log(greet('mondo'));`
-  }
-];
+function indent(code, spaces = 2) {
+  const prefix = ' '.repeat(spaces);
+  return code.split('\n').map((line) => line ? prefix + line : line).join('\n');
+}
+
+function eventNameFrom(request) {
+  const text = normalize(request);
+  if (text.includes('submit') || text.includes('invio')) return 'submit';
+  if (text.includes('input') || text.includes('digit')) return 'input';
+  if (text.includes('change') || text.includes('cambia')) return 'change';
+  if (text.includes('mouseover') || text.includes('passaggio')) return 'mouseover';
+  return 'click';
+}
+
+function messageFrom(request) {
+  return quotedText(request, 'Operazione completata!');
+}
+
+function generateButton(request) {
+  const selector = selectorFrom(request, '#my-button');
+  const message = messageFrom(request);
+  return `const element = document.querySelector(${jsString(selector)});\n\nif (!element) {\n  throw new Error('Elemento ${selector} non trovato.');\n}\n\nelement.addEventListener(${jsString(eventNameFrom(request))}, () => {\n  const output = document.querySelector('#output');\n  if (output) output.textContent = ${jsString(message)};\n});`;
+}
+
+function generateFetch(request) {
+  const url = urlFrom(request);
+  const method = hasAny(normalize(request), ['post', 'invia', 'crea']) ? 'POST' : 'GET';
+  const body = method === 'POST'
+    ? `\n  body: JSON.stringify(payload),`
+    : '';
+  const payload = method === 'POST'
+    ? `\nconst payload = { message: ${jsString(messageFrom(request))} };\n`
+    : '';
+  return `${payload}\nasync function requestData(url = ${jsString(url)}) {\n  const response = await fetch(url, {\n    method: ${jsString(method)},\n    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },${body}\n  });\n\n  if (!response.ok) {\n    throw new Error(\`HTTP error: \${response.status}\`);\n  }\n\n  return response.status === 204 ? null : response.json();\n}\n\nrequestData()\n  .then((data) => console.log('Risposta:', data))\n  .catch((error) => console.error('Richiesta fallita:', error));`;
+}
+
+function generateStorage(request) {
+  const keyMatch = String(request).match(/(?:chiave|key)\s+["']?([\w-]+)/i);
+  const key = keyMatch ? keyMatch[1] : 'app-settings';
+  return `const STORAGE_KEY = ${jsString(key)};\n\nexport function saveValue(value) {\n  try {\n    localStorage.setItem(STORAGE_KEY, JSON.stringify(value));\n  } catch (error) {\n    console.error('Salvataggio fallito:', error);\n  }\n}\n\nexport function readValue(fallback = {}) {\n  try {\n    const value = localStorage.getItem(STORAGE_KEY);\n    return value === null ? fallback : JSON.parse(value);\n  } catch (error) {\n    console.error('Lettura fallita:', error);\n    return fallback;\n  }\n}`;
+}
+
+function generateForm(request) {
+  const selector = selectorFrom(request, '#my-form');
+  const checks = hasAny(normalize(request), ['email', 'mail'])
+    ? `\n  const email = String(data.get('email') || '').trim();\n  if (!email || !email.includes('@')) {\n    form.setAttribute('aria-invalid', 'true');\n    return;\n  }`
+    : '';
+  return `const form = document.querySelector(${jsString(selector)});\n\nif (!form) throw new Error('Form ${selector} non trovato.');\n\nform.addEventListener('submit', (event) => {\n  event.preventDefault();\n  const data = new FormData(form);${checks}\n  console.log('Dati validi:', Object.fromEntries(data));\n});`;
+}
+
+function generateArray(request) {
+  const text = normalize(request);
+  const operation = text.includes('filter') || text.includes('filtr') ? 'filter' : text.includes('reduce') || text.includes('somma') ? 'reduce' : 'map';
+  const expression = operation === 'filter'
+    ? 'number > 0'
+    : operation === 'reduce'
+      ? '(total, number) => total + number, 0'
+      : 'number * 2';
+  const callback = operation === 'reduce' ? expression : `(number) => ${expression}`;
+  return `const numbers = [1, 2, 3, 4];\nconst result = numbers.${operation}(${callback});\n\nconsole.log(result);`;
+}
+
+function generateEvent(request) {
+  const selector = selectorFrom(request);
+  const event = eventNameFrom(request);
+  return `const element = document.querySelector(${jsString(selector)});\n\nif (element) {\n  element.addEventListener(${jsString(event)}, (event) => {\n    console.log('Evento ricevuto:', event.type, event.target);\n  });\n}`;
+}
+
+function generateDebounce() {
+  return `function debounce(callback, delay = 300) {\n  let timeoutId;\n\n  return (...args) => {\n    clearTimeout(timeoutId);\n    timeoutId = setTimeout(() => callback(...args), delay);\n  };\n}`;
+}
+
+function generateModule() {
+  return `// utils.js\nexport function greet(name) {\n  return \`Ciao, \${name}!\`;\n}\n\n// app.js\nimport { greet } from './utils.js';\n\nconsole.log(greet('mondo'));`;
+}
+
+function generateModal(request) {
+  const message = messageFrom(request);
+  return `const modal = document.querySelector('#modal');\nconst openButton = document.querySelector('#open-modal');\nconst closeButton = document.querySelector('#close-modal');\n\nif (modal && openButton && closeButton) {\n  modal.querySelector('[data-message]')?.replaceChildren(document.createTextNode(${jsString(message)}));\n  openButton.addEventListener('click', () => modal.showModal?.());\n  closeButton.addEventListener('click', () => modal.close?.());\n}`;
+}
+
+function generateSingleFeature(request, text) {
+  if (hasAny(text, ['fetch', 'api', 'http', 'richiesta di rete'])) return ['fetch', generateFetch(request)];
+  if (hasAny(text, ['localstorage', 'storage', 'memorizza', 'salva'])) return ['localStorage', generateStorage(request)];
+  if (hasAny(text, ['form', 'validazione', 'validate', 'modulo'])) return ['form', generateForm(request)];
+  if (hasAny(text, ['modal', 'finestra'])) return ['modal', generateModal(request)];
+  if (hasAny(text, ['debounce', 'ritardo'])) return ['debounce', generateDebounce()];
+  if (hasAny(text, ['array', 'mappa', 'map', 'filtro', 'filter', 'reduce', 'somma'])) return ['array', generateArray(request)];
+  if (hasAny(text, ['evento', 'event', 'listener', 'gestore'])) return ['evento', generateEvent(request)];
+  if (hasAny(text, ['modulo', 'import', 'export'])) return ['modulo', generateModule()];
+  if (hasAny(text, ['bottone', 'button', 'clic', 'click', 'premi'])) return ['bottone', generateButton(request)];
+  return null;
+}
 
 export function generateJavaScript(request) {
   const original = String(request || '').trim();
-  const normalized = normalize(original);
-  if (!normalized) return `Uso: js <richiesta>. ${HELP}`;
+  const text = normalize(original);
+  if (!text) return `Uso: js <richiesta>. ${HELP}`;
 
-  const ranked = templates
-    .map((template, index) => ({ template, index, score: scoreTemplate(template, normalized) }))
-    .sort((left, right) => right.score - left.score || left.index - right.index);
-
-  if (ranked[0].score > 0) {
-    const selected = ranked[0].template;
-    return `// Modello: ${selected.name}\n// Richiesta: ${original}\n\n${selected.generate(original)}`;
+  const generators = [];
+  let remaining = text;
+  let feature;
+  while ((feature = generateSingleFeature(original, remaining))) {
+    if (generators.some(([name]) => name === feature[0])) break;
+    generators.push(feature);
+    remaining = remaining.replace(new RegExp(feature[0], 'i'), '');
+    if (generators.length >= 3) break;
   }
 
-  return `// Richiesta: ${original}\n// Nessun modello locale specifico trovato.\n// ${HELP}\n\nfunction generatedFunction(input) {\n  // TODO: implementa qui la logica richiesta.\n  return input;\n}`;
+  if (!generators.length) {
+    return `// Richiesta: ${original}\n// Non ho trovato un pattern locale. ${HELP}\n\nfunction generatedFunction(input) {\n  // TODO: implementa la logica specifica.\n  return input;\n}`;
+  }
+
+  const blocks = generators.map(([name, code]) => `// Componente dinamico: ${name}\n${code}`);
+  return `// Richiesta: ${original}\n// Componenti generati: ${generators.map(([name]) => name).join(', ')}\n\n${blocks.join('\n\n')}`;
 }
 
 export function getJavaScriptGeneratorHelp() {

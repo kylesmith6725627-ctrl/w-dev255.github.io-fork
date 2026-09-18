@@ -1,8 +1,7 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'wdev255-agent-tts';
-  const DEFAULT_VOICE = '21m00Tcm4TlvDq8ikWAM';
+  const STORAGE_KEY = 'wdev255-agent-tts-local';
   const state = { history: [], output: [], prompt: '> ', busy: false };
 
   document.body.style.backgroundColor = '#000000';
@@ -78,63 +77,73 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   }
 
-  function downloadBlob(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  function getVoices() {
+    if (!('speechSynthesis' in window)) return [];
+    return speechSynthesis.getVoices();
   }
 
-  async function textToSpeech(args) {
-    const config = getConfig();
-    if (!config.apiKey) {
-      return 'Configura prima la chiave: tts-config <API_KEY> [VOICE_ID]. La chiave resta solo nel browser.';
+  function getVoiceByName(name) {
+    const target = (name || '').toLowerCase();
+    const voices = getVoices();
+    return voices.find((voice) => (
+      voice.name.toLowerCase() === target ||
+      voice.lang.toLowerCase() === target ||
+      `${voice.name} ${voice.lang}`.toLowerCase().includes(target)
+    )) || null;
+  }
+
+  function speakText(args) {
+    if (!('speechSynthesis' in window)) {
+      return 'Il browser non supporta SpeechSynthesis. Nessuna dipendenza esterna, ma la sintesi vocale locale non è disponibile.';
     }
-    const voiceId = args[0] || config.voiceId || DEFAULT_VOICE;
+
+    const config = getConfig();
+    const voiceName = args[0] || config.voiceName || '';
     const text = args.slice(1).join(' ').trim();
-    if (!text) return 'Uso: tts <voice-id opzionale> "testo da convertire"';
-    if (text.length > 5000) return 'Testo troppo lungo: massimo 5000 caratteri.';
+    if (!text) return 'Uso: tts [voice-name] "testo" oppure usa voce salvata con tts-config <voice-name>';
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'it-IT';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    const voices = getVoices();
+    if (voiceName) {
+      const selected = getVoiceByName(voiceName) || voices.find((voice) => voice.lang.startsWith('it'));
+      if (selected) utterance.voice = selected;
+    } else {
+      const preferred = voices.find((voice) => voice.lang.startsWith('it')) || voices[0];
+      if (preferred) utterance.voice = preferred;
+    }
+
+    if (state.busy) {
+      speechSynthesis.cancel();
+    }
 
     state.busy = true;
     button.disabled = true;
-    print('Generazione audio in corso...');
-    try {
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
-        method: 'POST',
-        headers: {
-          'xi-api-key': config.apiKey,
-          'Content-Type': 'application/json',
-          'Accept': 'audio/mpeg'
-        },
-        body: JSON.stringify({
-          text,
-          model_id: 'eleven_multilingual_v2',
-          output_format: 'mp3_44100_128',
-          voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-        })
-      });
-      if (!response.ok) {
-        const detail = await response.text();
-        throw new Error(`API ${response.status}: ${detail.slice(0, 180)}`);
-      }
-      const filename = `wdev255-${new Date().toISOString().replace(/[:.]/g, '-')}.mp3`;
-      downloadBlob(await response.blob(), filename);
-      return `Audio MP3 scaricato: ${filename}`;
-    } catch (error) {
-      return `Errore TTS: ${error.message}. Verifica API key, voice ID e CORS.`;
-    } finally {
+    print('Riproduzione vocale locale in corso...');
+
+    utterance.onend = () => {
       state.busy = false;
       button.disabled = false;
-    }
+      print('Riproduzione completata.');
+    };
+    utterance.onerror = (event) => {
+      state.busy = false;
+      button.disabled = false;
+      print(`Errore di sintesi vocale: ${event.error || 'sconosciuto'}`);
+    };
+
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+    return `Sintesi vocale avviata: ${text.slice(0, 80)}${text.length > 80 ? '…' : ''}`;
   }
 
   const commands = {
     help() {
-      return 'Comandi: help, echo <testo>, history, clear, time, goto <pagina>, tts-config <API_KEY> [VOICE_ID], tts [VOICE_ID] "testo"';
+      return 'Comandi: help, echo <testo>, history, clear, time, goto <pagina>, voices, tts-config <voice-name>, tts [voice-name] "testo"';
     },
     echo(args) { return args.join(' '); },
     history() {
@@ -148,13 +157,18 @@
       return '';
     },
     time() { return new Date().toLocaleString('it-IT'); },
-    'tts-config'(args) {
-      const apiKey = args[0];
-      if (!apiKey) return 'Uso: tts-config <API_KEY> [VOICE_ID]';
-      saveConfig({ apiKey, voiceId: args[1] || DEFAULT_VOICE });
-      return 'Configurazione TTS salvata in localStorage. Non usare chiavi condivise su computer pubblici.';
+    voices() {
+      const voices = getVoices();
+      if (!voices.length) return 'Nessuna voce rilevata. Il browser potrebbe richiedere il caricamento delle voci.';
+      return voices.map((voice, index) => `${index + 1}: ${voice.name} (${voice.lang})`).join('\n');
     },
-    tts: textToSpeech,
+    'tts-config'(args) {
+      const voiceName = args[0];
+      if (!voiceName) return 'Uso: tts-config <voice-name>';
+      saveConfig({ voiceName });
+      return `Voce predefinita salvata: ${voiceName}`;
+    },
+    tts: speakText,
     goto(args) {
       const pages = { home: '../index.html', agent: 'agent.html', quiz: 'quiz_elettrotecnica.html', tools: 'tools.html' };
       const destination = pages[(args[0] || '').toLowerCase()];
@@ -184,9 +198,14 @@
     commandArea.focus();
   }
 
+  if ('speechSynthesis' in window) {
+    speechSynthesis.onvoiceschanged = () => print('Voci di sistema rilevate.');
+  }
+
   form.addEventListener('submit', (event) => { event.preventDefault(); execute(commandArea.value); });
   commandArea.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); form.requestSubmit(); }
   });
-  print('Agente JavaScript pronto. Usa "help" per iniziare.');
+
+  print('Agente JavaScript pronto. Nessuna dipendenza esterna. Usa "help" per iniziare.');
 })();

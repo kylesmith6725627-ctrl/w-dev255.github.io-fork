@@ -1,0 +1,32 @@
+[
+  {
+    "id": "dom-toggle-class",
+    "terms": ["toggle class on click", "attiva classe al click", "toggle classe css"],
+    "code": "const button = document.querySelector('#toggle-button');\nconst panel = document.querySelector('#panel');\n\nif (!button || !panel) throw new Error('Elementi #toggle-button e #panel non trovati.');\n\nbutton.addEventListener('click', () => {\n  const expanded = button.getAttribute('aria-expanded') === 'true';\n  button.setAttribute('aria-expanded', String(!expanded));\n  panel.classList.toggle('is-visible', !expanded);\n});"
+  },
+  {
+    "id": "fetch-json-retry",
+    "terms": ["fetch json with retry", "richiesta json con retry", "fetch con tentativi"],
+    "code": "async function fetchJson(url, options = {}, retries = 2) {\n  let lastError;\n\n  for (let attempt = 0; attempt <= retries; attempt += 1) {\n    try {\n      const response = await fetch(url, {\n        ...options,\n        headers: { Accept: 'application/json', ...options.headers }\n      });\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n      return await response.json();\n    } catch (error) {\n      lastError = error;\n      if (attempt < retries) await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** attempt));\n    }\n  }\n\n  throw lastError;\n}"
+  },
+  {
+    "id": "form-validation",
+    "terms": ["validate form", "validazione form", "form validation", "valida modulo"],
+    "code": "const form = document.querySelector('#my-form');\n\nif (!form) throw new Error('Form #my-form non trovato.');\n\nform.addEventListener('submit', (event) => {\n  event.preventDefault();\n  form.querySelectorAll('[aria-invalid]').forEach((field) => field.removeAttribute('aria-invalid'));\n  const data = new FormData(form);\n  const email = String(data.get('email') || '').trim();\n  const emailField = form.elements.email;\n\n  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {\n    emailField?.setAttribute('aria-invalid', 'true');\n    emailField?.focus();\n    return;\n  }\n\n  console.log('Form valido:', Object.fromEntries(data));\n});"
+  },
+  {
+    "id": "local-storage-safe",
+    "terms": ["safe localstorage", "localstorage sicuro", "salva impostazioni", "persist settings"],
+    "code": "const STORAGE_KEY = 'app-settings';\n\nexport function loadSettings(fallback = {}) {\n  try {\n    const raw = localStorage.getItem(STORAGE_KEY);\n    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;\n  } catch (error) {\n    console.warn('Impostazioni non leggibili:', error);\n    return fallback;\n  }\n}\n\nexport function saveSettings(settings) {\n  try {\n    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));\n    return true;\n  } catch (error) {\n    console.warn('Impostazioni non salvate:', error);\n    return false;\n  }\n}"
+  },
+  {
+    "id": "search-filter-list",
+    "terms": ["filter list while typing", "filtra lista mentre digito", "search list input"],
+    "code": "const input = document.querySelector('#search');\nconst items = [...document.querySelectorAll('[data-search-item]')];\n\ninput?.addEventListener('input', () => {\n  const query = input.value.trim().toLocaleLowerCase();\n  items.forEach((item) => {\n    const matches = item.textContent.toLocaleLowerCase().includes(query);\n    item.hidden = !matches;\n  });\n});"
+  },
+  {
+    "id": "async-state",
+    "terms": ["loading state async", "stato caricamento", "gestisci loading error success"],
+    "code": "async function withLoading(button, task) {\n  const label = button?.textContent;\n  if (button) { button.disabled = true; button.textContent = 'Caricamento...'; }\n\n  try {\n    return await task();\n  } catch (error) {\n    console.error('Operazione fallita:', error);\n    throw error;\n  } finally {\n    if (button) { button.disabled = false; button.textContent = label; }\n  }\n}"
+  }
+]

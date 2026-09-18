@@ -1,11 +1,12 @@
 import { saveConfig } from './agent-storage.js';
 import { generateJavaScript, getJavaScriptGeneratorHelp } from './agent-codegen.js';
+import { getNaturalLanguageHelp } from './agent-nlp.js';
 
 const DEFAULT_VOICE = '21m00Tcm4TlvDq8ikWAM';
 
 export function createCommands({ state, outputBox, textToSpeech }) {
   return {
-    help: () => `Comandi: help, echo <testo>, history, clear, time, goto <pagina>, js <richiesta>, tts-config <API_KEY> [VOICE_ID], tts [VOICE_ID] "testo".\nGeneratore JS locale: ${getJavaScriptGeneratorHelp()}`,
+    help: () => `Comandi: help, echo <testo>, history, clear, time, goto <pagina>, js <richiesta>, tts-config <API_KEY> [VOICE_ID], tts [VOICE_ID] "testo".\nGeneratore JS locale: ${getJavaScriptGeneratorHelp()}\n${getNaturalLanguageHelp()}`,
     echo: (args) => args.join(' '),
     history: () => state.history.length
       ? state.history.map((item, index) => `${index + 1}: ${item}`).join('\n')

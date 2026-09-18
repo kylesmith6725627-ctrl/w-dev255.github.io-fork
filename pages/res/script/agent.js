@@ -1,5 +1,6 @@
 import { createAgentState } from './agent-state.js';
 import { parseCommand } from './agent-parser.js';
+import { interpretNaturalLanguage } from './agent-nlp.js';
 import { createAgentUI, createPrinter } from './agent-ui.js';
 import { createTextToSpeech } from './agent-tts.js';
 import { createCommands } from './agent-commands.js';
@@ -10,15 +11,24 @@ const print = createPrinter(state, ui.outputBox);
 const textToSpeech = createTextToSpeech({ state, button: ui.button, print });
 const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech });
 
-async function dispatch(tokens) {
-  const name = (tokens.shift() || '').toLowerCase();
-  if (!name) return;
+async function dispatch(tokens, originalInput) {
+  let name = (tokens.shift() || '').toLowerCase();
+  let args = tokens;
+
+  // I comandi espliciti restano prioritari; il classificatore interviene solo
+  // quando la prima parola non corrisponde a un comando noto.
   if (!commands[name]) {
-    print(`Comando non riconosciuto: ${name}. Usa "help".`);
-    return;
+    const interpretation = interpretNaturalLanguage(originalInput);
+    if (!interpretation) {
+      print(`Non ho capito la richiesta. Usa "help" oppure prova una frase naturale.`);
+      return;
+    }
+    name = interpretation.command;
+    args = interpretation.args;
   }
+
   try {
-    const result = await commands[name](tokens);
+    const result = await commands[name](args);
     if (result) print(result);
   } catch (error) {
     print(`Errore: ${error.message}`);
@@ -30,7 +40,7 @@ async function execute(input) {
   if (!value || state.busy) return;
   state.history.push(value);
   print(`${state.prompt}${value}`);
-  await dispatch(parseCommand(value));
+  await dispatch(parseCommand(value), value);
   ui.commandArea.value = '';
   ui.commandArea.focus();
 }
@@ -47,4 +57,4 @@ ui.commandArea.addEventListener('keydown', (event) => {
   }
 });
 
-print('Agente JavaScript pronto. Usa "help" per iniziare. Generazione locale: js <richiesta>.');
+print('Agente JavaScript pronto. Usa "help" per iniziare. NLP locale attivo: nessuna API o connessione esterna.');

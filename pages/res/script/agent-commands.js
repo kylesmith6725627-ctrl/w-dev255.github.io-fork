@@ -1,10 +1,11 @@
 import { saveConfig } from './agent-storage.js';
+import { generateJavaScript, getJavaScriptGeneratorHelp } from './agent-codegen.js';
 
 const DEFAULT_VOICE = '21m00Tcm4TlvDq8ikWAM';
 
 export function createCommands({ state, outputBox, textToSpeech }) {
   return {
-    help: () => 'Comandi: help, echo <testo>, history, clear, time, goto <pagina>, tts-config <API_KEY> [VOICE_ID], tts [VOICE_ID] "testo"',
+    help: () => `Comandi: help, echo <testo>, history, clear, time, goto <pagina>, js <richiesta>, tts-config <API_KEY> [VOICE_ID], tts [VOICE_ID] "testo".\nGeneratore JS locale: ${getJavaScriptGeneratorHelp()}`,
     echo: (args) => args.join(' '),
     history: () => state.history.length
       ? state.history.map((item, index) => `${index + 1}: ${item}`).join('\n')
@@ -15,6 +16,8 @@ export function createCommands({ state, outputBox, textToSpeech }) {
       return '';
     },
     time: () => new Date().toLocaleString('it-IT'),
+    js: (args) => generateJavaScript(args.join(' ')),
+    'generate-js': (args) => generateJavaScript(args.join(' ')),
     'tts-config': (args) => {
       if (!args[0]) return 'Uso: tts-config <API_KEY> [VOICE_ID]';
       saveConfig({ apiKey: args[0], voiceId: args[1] || DEFAULT_VOICE });

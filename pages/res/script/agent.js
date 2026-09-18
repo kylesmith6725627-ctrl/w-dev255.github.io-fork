@@ -47,4 +47,4 @@ ui.commandArea.addEventListener('keydown', (event) => {
   }
 });
 
-print('Agente JavaScript pronto. Usa "help" per iniziare.');
+print('Agente JavaScript pronto. Usa "help" per iniziare. Generazione locale: js <richiesta>.');

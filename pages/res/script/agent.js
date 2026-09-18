@@ -1,6 +1,6 @@
 import { createAgentState } from './agent-state.js';
 import { parseCommand } from './agent-parser.js';
-import { interpretNaturalLanguage } from './agent-nlp.js';
+import { createReasoner } from './agent-reasoning.js';
 import { createAgentUI, createPrinter } from './agent-ui.js';
 import { createTextToSpeech } from './agent-tts.js';
 import { createCommands } from './agent-commands.js';
@@ -8,28 +8,30 @@ import { createCommands } from './agent-commands.js';
 const state = createAgentState();
 const ui = createAgentUI();
 const print = createPrinter(state, ui.outputBox);
+const reasoner = createReasoner(state);
 const textToSpeech = createTextToSpeech({ state, button: ui.button, print });
 const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech });
 
 async function dispatch(tokens, originalInput) {
   let name = (tokens.shift() || '').toLowerCase();
   let args = tokens;
+  let decision = { intent: name, confidence: 1, topic: args.join(' ') };
 
-  // I comandi espliciti restano prioritari; il classificatore interviene solo
-  // quando la prima parola non corrisponde a un comando noto.
+  // I comandi espliciti hanno priorità. Le frasi naturali passano dal livello
+  // di ragionamento, che usa anche le richieste precedenti della sessione.
   if (!commands[name]) {
-    const interpretation = interpretNaturalLanguage(originalInput);
-    if (!interpretation) {
-      print(`Non ho capito la richiesta. Usa "help" oppure prova una frase naturale.`);
+    decision = reasoner.interpret(originalInput);
+    if (!decision.command) {
+      print('Non ho capito la richiesta. Prova “help” oppure specifica meglio obiettivo e argomento.');
       return;
     }
-    name = interpretation.command;
-    args = interpretation.args;
+    name = decision.command;
+    args = decision.args || [];
   }
 
   try {
     const result = await commands[name](args);
-    if (result) print(result);
+    if (result) print(reasoner.contextualize(result, decision));
   } catch (error) {
     print(`Errore: ${error.message}`);
   }
@@ -57,4 +59,4 @@ ui.commandArea.addEventListener('keydown', (event) => {
   }
 });
 
-print('Agente JavaScript pronto. Usa "help" per iniziare. NLP locale attivo: nessuna API o connessione esterna.');
+print('Agente JavaScript pronto. Usa “help” per iniziare. Ragionamento contestuale locale attivo.');

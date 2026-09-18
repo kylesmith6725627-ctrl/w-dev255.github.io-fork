@@ -77,18 +77,25 @@ console.log(greet('mondo'));`
 ];
 
 function normalize(text) {
-  return text.toLocaleLowerCase('it-IT');
+  return String(text || '')
+    .toLocaleLowerCase('it-IT')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 export function generateJavaScript(request) {
   const normalized = normalize(request.trim());
   if (!normalized) return `Uso: js <richiesta>. ${HELP}`;
 
-  const template = templates.find(({ keywords }) => (
-    keywords.some((keyword) => normalized.includes(keyword))
-  ));
+  // Sceglie il modello con più corrispondenze, non semplicemente il primo.
+  const ranked = templates.map((template) => ({
+    template,
+    score: template.keywords.reduce((score, keyword) => (
+      score + (normalized.includes(keyword) ? 1 : 0)
+    ), 0)
+  })).sort((left, right) => right.score - left.score);
 
-  if (template) return template.generate();
+  if (ranked[0].score > 0) return ranked[0].template.generate();
 
   return `// Richiesta: ${request.trim()}
 // Nessun modello locale specifico trovato.

@@ -1,0 +1,9 @@
+[
+  {"text":"che tempo fa a Roma","intent":"weather","topic":"Roma","features":["weather","api"],"language":"it"},
+  {"text":"meteo per Milano per cinque giorni","intent":"weather","topic":"Milano","features":["weather","api"],"language":"it"},
+  {"text":"what is the weather in London","intent":"weather","topic":"London","features":["weather","api"],"language":"en"},
+  {"text":"informazioni sull'Italia","intent":"country","topic":"Italia","features":["country","api"],"language":"it"},
+  {"text":"show me facts about Japan","intent":"country","topic":"Japan","features":["country","api"],"language":"en"},
+  {"text":"cerca su Wikipedia la fotosintesi","intent":"wiki","topic":"fotosintesi","features":["wikipedia","api"],"language":"it"},
+  {"text":"search Wikimedia for JavaScript","intent":"wiki","topic":"JavaScript","features":["wikimedia","api"],"language":"en"}
+]

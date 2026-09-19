@@ -20,17 +20,45 @@ const textToSpeech = createTextToSpeech({ state, button: ui.button, print });
 const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech, decisionTree: wizard });
 const outputValidator = createOutputValidator(state);
 
-// The command module remains backward-compatible; HTML generation is decorated
-// here so the selected dataset template can customize the final document.
-const generateHtml = (args, decision = {}) => renderHTMLWithTemplate(args.join(' '), decisionTreePlan(args, decision));
-const decisionTreePlan = (args, decision) => wizard.predict(args.join(' '), { ...decision, intent: 'html' });
+const generateHtml = (args, decision = {}) => renderHTMLWithTemplate(args.join(' '), wizard.predict(args.join(' '), { ...decision, intent: 'html' }));
 commands.html = (args) => generateHtml(args, { intent: 'html', category: 'html' });
 commands['generate-html'] = commands.html;
+
+let latestHtml = '';
+let latestHtmlName = 'generated-page.html';
+
+function downloadHtml(source, filename = 'generated-page.html') {
+  const blob = new Blob([source], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function safeFilename(request) {
+  const slug = String(request || 'generated-page').toLocaleLowerCase('it-IT')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0,  sixty = 60);
+  return `${slug || 'generated-page'}.html`;
+}
+
+ui.downloadButton.addEventListener('click', () => {
+  if (latestHtml) downloadHtml(latestHtml, latestHtmlName);
+});
 
 function tokenize(input) { return shellwords.split(input); }
 function validateAndPrint(result, request, type, decision) {
   const validation = outputValidator.validate(result, request, type, decision);
   if (!validation.accepted) { print(outputValidator.rejectMessage(validation)); return false; }
+  if (type === 'html') {
+    latestHtml = result;
+    latestHtmlName = safeFilename(request);
+    ui.downloadButton.disabled = false;
+    ui.downloadButton.hidden = false;
+    print(`Pagina HTML pronta: ${latestHtmlName}. Premi "Scarica .html" per salvarla.`);
+  }
   print(reasoner.contextualize(result, decision));
   return true;
 }

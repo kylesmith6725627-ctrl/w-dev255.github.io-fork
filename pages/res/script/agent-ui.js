@@ -50,19 +50,32 @@ export function createAgentUI() {
   button.style.border = '3px solid green';
   button.style.padding = '6px';
 
+  const downloadButton = document.createElement('button');
+  downloadButton.type = 'button';
+  downloadButton.id = 'agent-download-html';
+  downloadButton.textContent = 'Scarica .html';
+  downloadButton.disabled = true;
+  downloadButton.setAttribute('aria-label', 'Scarica l’ultima pagina HTML generata');
+  downloadButton.style.backgroundColor = '#000000';
+  downloadButton.style.color = 'green';
+  downloadButton.style.fontFamily = 'monospace';
+  downloadButton.style.border = '3px solid green';
+  downloadButton.style.padding = '6px';
+  downloadButton.hidden = true;
+
   form.append(commandArea, button);
-  terminal.append(outputBox, form);
+  terminal.append(outputBox, form, downloadButton);
   document.body.appendChild(terminal);
 
   const scrapingGuard = createScrapingGuard({
     form,
     commandArea,
     onBlocked: (message) => {
-      outputBox.textContent += `${outputBox.textContent ? '\\n' : ''}${message}`;
+      outputBox.textContent += `${outputBox.textContent ? '\n' : ''}${message}`;
     },
   });
 
-  return { form, commandArea, button, outputBox, scrapingGuard };
+  return { form, commandArea, button, outputBox, downloadButton, scrapingGuard };
 }
 
 export function createPrinter(state, outputBox) {

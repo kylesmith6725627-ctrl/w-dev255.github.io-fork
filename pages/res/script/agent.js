@@ -6,18 +6,30 @@ import { createTextToSpeech } from './agent-tts.js';
 import { createCommands } from './agent-commands.js';
 import { saveAgentContext } from './agent-context-storage.js';
 import { createChatEngine } from './agent-chat.js';
-import { createDecisionTree, formatTaskPlan } from './agent-decision-tree.js';
+import { createOutputValidator } from './agent-output-validator.js';
 
 const state = createAgentState();
 const ui = createAgentUI();
 const print = createPrinter(state, ui.outputBox);
 const reasoner = createReasoner(state);
 const chat = createChatEngine(state);
-const decisionTree = createDecisionTree(state);
 const textToSpeech = createTextToSpeech({ state, button: ui.button, print });
-const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech, decisionTree });
+const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech });
+const outputValidator = createOutputValidator(state);
 
-function tokenize(input) { return shellwords.split(input); }
+function tokenize(input) {
+  return shellwords.split(input);
+}
+
+function validateAndPrint(result, request, type, decision) {
+  const validation = outputValidator.validate(result, request, type);
+  if (!validation.accepted) {
+    print(outputValidator.rejectMessage(validation));
+    return false;
+  }
+  print(reasoner.contextualize(result, decision));
+  return true;
+}
 
 async function dispatch(input) {
   const value = input.trim();
@@ -28,21 +40,25 @@ async function dispatch(input) {
 
   if (!commands[name]) {
     decision = await reasoner.interpret(value);
-    if (decision.command) { name = decision.command; args = decision.args || []; }
-  }
-
-  const planningCommands = new Set(['js', 'generate-js', 'html', 'generate-html', 'goto', 'scrape', 'weather', 'meteo', 'country', 'paese', 'wiki', 'wikimedia']);
-  if (planningCommands.has(name) || decision.command) {
-    const plan = decisionTree.predict(value, { intent: decision.intent || name });
-    if (plan.steps?.length) print(formatTaskPlan(plan, decisionTree.examples));
+    if (decision.command) {
+      name = decision.command;
+      args = decision.args || [];
+    }
   }
 
   if (commands[name]) {
     const result = await commands[name](args);
-    if (result) print(reasoner.contextualize(result, decision));
+    const type = ['js', 'generate-js', 'html', 'generate-html'].includes(name) ? name.startsWith('html') ? 'html' : 'js' : 'js';
+    if (result) {
+      const accepted = validateAndPrint(result, value, type, decision);
+      if (accepted) return;
+      return;
+    }
     return;
   }
-  print(chat.reply(value).response);
+
+  const conversational = chat.reply(value);
+  print(conversational.response);
 }
 
 ui.form.addEventListener('submit', async (event) => {
@@ -51,7 +67,11 @@ ui.form.addEventListener('submit', async (event) => {
   if (!value || state.busy) return;
   state.history.push(value);
   print(`${state.prompt}${value}`);
-  try { await dispatch(value); } catch (error) { print(`Errore: ${error.message}`); }
+  try {
+    await dispatch(value);
+  } catch (error) {
+    print(`Errore: ${error.message}`);
+  }
   saveAgentContext(state);
   ui.commandArea.value = '';
   ui.commandArea.focus();

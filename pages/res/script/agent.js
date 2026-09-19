@@ -8,6 +8,7 @@ import { saveAgentContext } from './agent-context-storage.js';
 import { createChatEngine } from './agent-chat.js';
 import { createOutputValidator } from './agent-output-validator.js';
 import { createDecisionWizard } from './agent-decision-wizard.js';
+import { renderHTMLWithTemplate } from './agent-template-renderer.js';
 
 const state = createAgentState();
 const ui = createAgentUI();
@@ -19,73 +20,56 @@ const textToSpeech = createTextToSpeech({ state, button: ui.button, print });
 const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech, decisionTree: wizard });
 const outputValidator = createOutputValidator(state);
 
-function tokenize(input) { return shellwords.split(input); }
+// The command module remains backward-compatible; HTML generation is decorated
+// here so the selected dataset template can customize the final document.
+const generateHtml = (args, decision = {}) => renderHTMLWithTemplate(args.join(' '), decisionTreePlan(args, decision));
+const decisionTreePlan = (args, decision) => wizard.predict(args.join(' '), { ...decision, intent: 'html' });
+commands.html = (args) => generateHtml(args, { intent: 'html', category: 'html' });
+commands['generate-html'] = commands.html;
 
+function tokenize(input) { return shellwords.split(input); }
 function validateAndPrint(result, request, type, decision) {
   const validation = outputValidator.validate(result, request, type, decision);
-  if (!validation.accepted) {
-    print(outputValidator.rejectMessage(validation));
-    return false;
-  }
+  if (!validation.accepted) { print(outputValidator.rejectMessage(validation)); return false; }
   print(reasoner.contextualize(result, decision));
   return true;
 }
 
 async function dispatch(input) {
   const value = input.trim();
-
   if (wizard.isActive()) {
     const followUp = wizard.answer(value);
-    if (followUp.cancelled) {
-      print(followUp.message);
-      return;
-    }
-    if (followUp.active) {
-      print(followUp.question);
-      return;
-    }
+    if (followUp.cancelled) { print(followUp.message); return; }
+    if (followUp.active) { print(followUp.question); return; }
     if (followUp.complete) {
       const commandName = followUp.decision.command || followUp.decision.intent || 'js';
-      const commandArgs = [followUp.request];
-      const nextDecision = followUp.decision;
       if (commands[commandName]) {
-        const result = await commands[commandName](commandArgs);
+        const result = await commands[commandName]([followUp.request]);
         const type = commandName === 'html' || commandName === 'generate-html' ? 'html' : 'js';
-        if (result) {
-          validateAndPrint(result, followUp.request, type, nextDecision);
-        }
-        return;
+        if (result) validateAndPrint(result, followUp.request, type, followUp.decision);
       }
+      return;
     }
   }
-
   const tokens = tokenize(value);
   let name = (tokens.shift() || '').toLowerCase();
   let args = tokens;
   let decision = { intent: name, category: name, confidence: 1, topic: args.join(' ') };
-
   if (!commands[name]) {
     decision = await reasoner.interpret(value);
     if (decision.command) {
       name = decision.command;
       args = decision.args || [];
       const prompt = wizard.start(value, decision);
-      if (prompt) {
-        print(prompt.question);
-        return;
-      }
+      if (prompt) { print(prompt.question); return; }
     }
   }
-
   if (commands[name]) {
     const result = await commands[name](args);
     const type = name === 'html' || name === 'generate-html' ? 'html' : name === 'js' || name === 'generate-js' ? 'js' : 'text';
-    if (result) {
-      validateAndPrint(result, value, type, decision);
-    }
+    if (result) validateAndPrint(result, value, type, decision);
     return;
   }
-
   print(chat.reply(value).response);
 }
 
@@ -95,14 +79,9 @@ ui.form.addEventListener('submit', async (event) => {
   if (!value || state.busy) return;
   state.history.push(value);
   print(`${state.prompt}${value}`);
-  try {
-    await dispatch(value);
-  } catch (error) {
-    print(`Errore: ${error.message}`);
-  }
+  try { await dispatch(value); } catch (error) { print(`Errore: ${error.message}`); }
   saveAgentContext(state);
   ui.commandArea.value = '';
   ui.commandArea.focus();
 });
-
 print('Conversational JavaScript agent ready. Type help, or chat in Italian / English.');

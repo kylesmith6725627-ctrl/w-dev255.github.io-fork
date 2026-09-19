@@ -1,12 +1,11 @@
 (() => {
   'use strict';
-
-  if (document.querySelector('script[data-agent-loader]')) return;
-
-  const current = document.currentScript;
-  const loader = document.createElement('script');
-  loader.type = 'module';
-  loader.dataset.agentLoader = 'true';
-  loader.src = current?.dataset.agent || 'pages/res/script/agent.js';
-  document.head.appendChild(loader);
+  const root = new URL('../../', import.meta.url);
+  const agent = new URL('pages/res/script/agent.js', root).href;
+  if (document.querySelector(`script[src="${agent}"]`)) return;
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.src = agent;
+  script.dataset.agentLoader = 'true';
+  document.head.appendChild(script);
 })();

@@ -13,19 +13,11 @@ const ui = createAgentUI();
 const print = createPrinter(state, ui.outputBox);
 const reasoner = createReasoner(state);
 const chat = createChatEngine(state);
-const textToSpeech = createTextToSpeech({ state, button: ui.button, print });
-const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech });
 const decisionTree = createDecisionTree(state);
+const textToSpeech = createTextToSpeech({ state, button: ui.button, print });
+const commands = createCommands({ state, outputBox: ui.outputBox, textToSpeech, decisionTree });
 
-function tokenize(input) {
-  return shellwords.split(input);
-}
-
-function maybePrintTaskPlan(value, decision) {
-  const plan = decisionTree.predict(value, { intent: decision?.intent || decision?.command || 'js' });
-  const formatted = formatTaskPlan(plan, decisionTree.examples);
-  print(formatted);
-}
+function tokenize(input) { return shellwords.split(input); }
 
 async function dispatch(input) {
   const value = input.trim();
@@ -36,17 +28,13 @@ async function dispatch(input) {
 
   if (!commands[name]) {
     decision = await reasoner.interpret(value);
-    if (decision.command) {
-      name = decision.command;
-      args = decision.args || [];
-    }
+    if (decision.command) { name = decision.command; args = decision.args || []; }
   }
 
-  if (decision.command || name === 'js' || name === 'generate-js' || name === 'goto' || name === 'scrape' || name === 'weather' || name === 'meteo' || name === 'country' || name === 'paese' || name === 'wiki' || name === 'wikimedia') {
+  const planningCommands = new Set(['js', 'generate-js', 'html', 'generate-html', 'goto', 'scrape', 'weather', 'meteo', 'country', 'paese', 'wiki', 'wikimedia']);
+  if (planningCommands.has(name) || decision.command) {
     const plan = decisionTree.predict(value, { intent: decision.intent || name });
-    if (plan.steps?.length) {
-      print(formatTaskPlan(plan, decisionTree.examples));
-    }
+    if (plan.steps?.length) print(formatTaskPlan(plan, decisionTree.examples));
   }
 
   if (commands[name]) {
@@ -54,9 +42,7 @@ async function dispatch(input) {
     if (result) print(reasoner.contextualize(result, decision));
     return;
   }
-
-  const conversational = chat.reply(value);
-  print(conversational.response);
+  print(chat.reply(value).response);
 }
 
 ui.form.addEventListener('submit', async (event) => {
@@ -65,11 +51,7 @@ ui.form.addEventListener('submit', async (event) => {
   if (!value || state.busy) return;
   state.history.push(value);
   print(`${state.prompt}${value}`);
-  try {
-    await dispatch(value);
-  } catch (error) {
-    print(`Errore: ${error.message}`);
-  }
+  try { await dispatch(value); } catch (error) { print(`Errore: ${error.message}`); }
   saveAgentContext(state);
   ui.commandArea.value = '';
   ui.commandArea.focus();

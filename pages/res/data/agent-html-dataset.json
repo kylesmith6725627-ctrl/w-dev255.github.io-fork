@@ -1,0 +1,65 @@
+[
+  {
+    "text": "crea una pagina didattica in stile terminale retro con sezioni e blocchi di codice C",
+    "intent": "html",
+    "topic": "pagina didattica C retro",
+    "features": ["html", "education", "retro", "code", "sections"],
+    "language": "it",
+    "source": "../../c.html",
+    "template": "educational-retro"
+  },
+  {
+    "text": "genera una pagina di elettrotecnica con spiegazioni e formule tecniche",
+    "intent": "html",
+    "topic": "pagina elettrotecnica",
+    "features": ["html", "education", "technical", "nested-sections"],
+    "language": "it",
+    "source": "../../elettrotecnica.html",
+    "template": "technical-notes"
+  },
+  {
+    "text": "crea una pagina strumenti con tabella di collegamenti e file",
+    "intent": "html",
+    "topic": "pagina strumenti tabella",
+    "features": ["html", "tools", "table", "navigation"],
+    "language": "it",
+    "source": "../../tools.html",
+    "template": "resource-index"
+  },
+  {
+    "text": "genera una pagina obiettivi con una tabella di elementi da completare",
+    "intent": "html",
+    "topic": "pagina obiettivi",
+    "features": ["html", "goals", "table", "planning"],
+    "language": "it",
+    "source": "../../goals.html",
+    "template": "goals-table"
+  },
+  {
+    "text": "crea una pagina musicale con player audio e interfaccia retro",
+    "intent": "html",
+    "topic": "pagina musica player audio",
+    "features": ["html", "music", "audio", "retro"],
+    "language": "it",
+    "source": "../../music.html",
+    "template": "audio-page"
+  },
+  {
+    "text": "build a retro educational HTML page with code examples and reusable sections",
+    "intent": "html",
+    "topic": "retro educational code page",
+    "features": ["html", "education", "retro", "code", "sections"],
+    "language": "en",
+    "source": "../../c.html",
+    "template": "educational-retro"
+  },
+  {
+    "text": "create an HTML resource page with a table of tools and links",
+    "intent": "html",
+    "topic": "tools resource page",
+    "features": ["html", "tools", "table", "navigation"],
+    "language": "en",
+    "source": "../../tools.html",
+    "template": "resource-index"
+  }
+]

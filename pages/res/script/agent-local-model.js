@@ -1,6 +1,7 @@
 const DATASET_URLS = [
   new URL('../data/agent-dataset.json', import.meta.url),
-  new URL('../data/agent-public-api-dataset.json', import.meta.url)
+  new URL('../data/agent-public-api-dataset.json', import.meta.url),
+  new URL('../data/agent-html-dataset.json', import.meta.url)
 ];
 const MIN_CONFIDENCE = 0.19;
 
@@ -43,14 +44,14 @@ function topicFrom(input, prediction) {
   return prediction.topic || raw;
 }
 
-/** Local supervised TF-IDF model. All examples remain reviewed, local and offline. */
+/** Local supervised TF-IDF model using curated intent, API and HTML examples. */
 export async function createLocalModel() {
   const responses = await Promise.all(DATASET_URLS.map((url) => fetch(url)));
   const failed = responses.find((response) => !response.ok);
   if (failed) throw new Error(`Dataset locale non disponibile (${failed.status})`);
   const parts = await Promise.all(responses.map((response) => response.json()));
   const dataset = parts.flat().filter((item) => item && item.text && item.intent);
-  const documents = dataset.map((item) => vector(item.text));
+  const documents = dataset.map((item) => vector(`${item.text} ${(item.features || []).join(' ')}`));
   const frequency = new Map();
   documents.forEach((document) => document.keys().forEach((key) => frequency.set(key, (frequency.get(key) || 0) + 1)));
   const idf = new Map([...frequency].map(([key, count]) => [key, Math.log((documents.length + 1) / (count + 1)) + 1]));
@@ -59,25 +60,17 @@ export async function createLocalModel() {
     if (!centroids.has(item.intent)) centroids.set(item.intent, []);
     centroids.get(item.intent).push({ item, vector: documents[index] });
   });
-
   function predict(input) {
     const query = vector(input);
     const candidates = [...centroids].map(([intent, examples]) => {
-      const ranked = examples.map((example) => ({ ...example.item, score: cosine(query, example.vector, idf) }))
-        .sort((a, b) => b.score - a.score);
+      const ranked = examples.map((example) => ({ ...example.item, score: cosine(query, example.vector, idf) })).sort((a, b) => b.score - a.score);
       const best = ranked[0] || { score: 0 };
-      return { intent, score: best.score, topic: best.topic, features: best.features || [], language: best.language };
+      return { intent, score: best.score, topic: best.topic, features: best.features || [], language: best.language, source: best.source, template: best.template };
     }).sort((a, b) => b.score - a.score);
     const best = candidates[0] || { intent: 'unknown', score: 0, topic: '' };
     if (best.score < MIN_CONFIDENCE) return { intent: 'unknown', category: 'unknown', confidence: best.score, topic: String(input || ''), candidates };
-    return {
-      ...best,
-      category: best.intent,
-      confidence: Math.min(0.99, best.score),
-      topic: topicFrom(input, best),
-      candidates: candidates.slice(0, 3)
-    };
+    return { ...best, category: best.intent, confidence: Math.min(0.99, best.score), topic: topicFrom(input, best), candidates: candidates.slice(0, 3) };
   }
-  return { predict, size: dataset.length, intents: [...centroids.keys()] };
+  return { predict, size: dataset.length, intents: [...centroids.keys()], examples: dataset };
 }
 export { normalize };

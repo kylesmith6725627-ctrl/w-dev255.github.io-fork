@@ -1,62 +1,100 @@
-const STEPS = [
-  { key: 'goal', prompt: 'Wizard 1/4 — Qual è l’obiettivo principale della richiesta?' },
-  { key: 'inputs', prompt: 'Wizard 2/4 — Quali input, dati o elementi deve usare?' },
-  { key: 'output', prompt: 'Wizard 3/4 — Quale output vuoi ottenere e in quale formato?' },
-  { key: 'constraints', prompt: 'Wizard 4/4 — Ci sono vincoli, tecnologie o requisiti (accessibilità, API, storage)? Scrivi “nessuno” se non ci sono.' }
+const QUESTIONS = [
+  { key: 'goal', prompt: 'Wizard 1/4 — Qual è l’obiettivo principale della pagina o del codice?' },
+  { key: 'inputs', prompt: 'Wizard 2/4 — Quali dati, contenuti o componenti devono essere inclusi?' },
+  { key: 'output', prompt: 'Wizard 3/4 — Che tipo di output vuoi ottenere: pagina HTML, componente JS, form, modal, dashboard?' },
+  { key: 'constraints', prompt: 'Wizard 4/4 — Ci sono vincoli tecnici o design? Scrivi “nessuno” se non ce ne sono.' }
 ];
 
-function clean(value) { return String(value || '').trim(); }
-function codeIntent(decision) { return ['js', 'html', 'generate-js', 'generate-html'].includes(decision?.command || decision?.intent); }
-function explicitEnough(input) {
-  const text = clean(input).toLowerCase();
-  return text.split(/\s+/).filter(Boolean).length >= 8
-    && /\b(form|pagina|page|funzione|function|fetch|api|array|modal|dashboard|validazione|validation|componente|component)\b/.test(text);
+function normalizeText(value) {
+  return String(value || '').toLocaleLowerCase('it-IT').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-/**
- * Local wizard for turning an underspecified NLP request into a deterministic
- * decision-tree plan. It does not call a remote model and keeps no secrets.
- */
+function isCodeIntent(decision = {}) {
+  const command = String(decision.command || decision.intent || '').toLowerCase();
+  return ['js', 'html', 'generate-js', 'generate-html'].includes(command);
+}
+
+function explicitEnough(text) {
+  const normalized = normalizeText(text);
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const hasStructure = /(pagina|page|form|modulo|funzione|function|fetch|api|modal|dashboard|card|button|validazione|validation|componente|component|layout)/.test(normalized);
+  return words.length >= 8 && hasStructure;
+}
+
 export function createDecisionWizard() {
   let session = null;
 
   function start(request, decision = {}) {
-    if (!codeIntent(decision) || explicitEnough(request)) return null;
-    session = { request: clean(request), decision, answers: {}, step: 0 };
-    return { active: true, question: `Posso costruire un piano migliore.\n${STEPS[0].prompt}` };
+    const text = normalizeText(request || '');
+    if (!text || !isCodeIntent(decision) || explicitEnough(text)) return null;
+    session = { request: text, decision, answers: {}, step: 0 };
+    return { active: true, question: QUESTIONS[0].prompt };
   }
 
   function answer(value) {
     if (!session) return { active: false };
-    const answerText = clean(value);
-    if (!answerText) return { active: true, question: STEPS[session.step].prompt };
-    if (/^(cancel|cancella|annulla|esci|quit)$/i.test(answerText)) {
+    const reply = String(value || '').trim();
+
+    if (!reply) return { active: true, question: QUESTIONS[session.step].prompt };
+    if (/^(cancel|cancella|annulla|esci|quit)$/i.test(reply)) {
       session = null;
       return { active: false, cancelled: true, message: 'Wizard annullato.' };
     }
-    session.answers[STEPS[session.step].key] = answerText;
+
+    session.answers[QUESTIONS[session.step].key] = reply;
     session.step += 1;
-    if (session.step < STEPS.length) return { active: true, question: STEPS[session.step].prompt };
+
+    if (session.step < QUESTIONS.length) {
+      return { active: true, question: QUESTIONS[session.step].prompt };
+    }
 
     const plan = {
-      intent: session.decision.intent || session.decision.command,
-      category: session.decision.category || session.decision.intent,
+      intent: session.decision.intent || session.decision.command || 'js',
+      category: session.decision.category || session.decision.intent || session.decision.command || 'js',
+      confidence: 0.96,
       steps: [
         { name: 'goal', value: session.answers.goal },
         { name: 'inputs', value: session.answers.inputs },
         { name: 'output', value: session.answers.output },
         { name: 'constraints', value: session.answers.constraints }
-      ],
-      confidence: 0.95
+      ]
     };
-    const request = [session.request, `Obiettivo: ${session.answers.goal}`, `Input: ${session.answers.inputs}`, `Output: ${session.answers.output}`, `Vincoli: ${session.answers.constraints}`].join('. ');
-    const result = { active: false, complete: true, request, plan, decision: { ...session.decision, topic: request, confidence: plan.confidence } };
+
+    const requestText = [
+      session.request,
+      `Obiettivo: ${session.answers.goal}`,
+      `Input: ${session.answers.inputs}`,
+      `Output: ${session.answers.output}`,
+      `Vincoli: ${session.answers.constraints}`
+    ].join('. ');
+
+    const result = {
+      active: false,
+      complete: true,
+      request: requestText,
+      plan,
+      decision: { ...session.decision, topic: requestText, confidence: plan.confidence }
+    };
+
     session = null;
     return result;
   }
 
   function predict(input, base = {}) {
-    return { ...base, intent: base.intent || base.category || 'html', steps: base.steps || [], source: input };
+    const intent = base.intent || base.category || 'html';
+    const source = String(input || '').trim();
+    return {
+      ...base,
+      intent,
+      category: base.category || intent,
+      steps: Array.isArray(base.steps) && base.steps.length ? base.steps : [{ name: 'goal', value: source || 'generazione' }],
+      confidence: Number(base.confidence) || 0.8,
+      source
+    };
   }
 
   return { start, answer, predict, isActive: () => Boolean(session) };
